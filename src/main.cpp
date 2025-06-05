@@ -6,6 +6,20 @@
 const char* ssid = "INTERNET";
 const char* password = "PASSWORD";
 
+String requestGet(HTTPClient &client, String Url){
+  // función para realizar una request
+  client.begin(Url);
+  int responseCode = client.GET();
+
+  if (responseCode <= 0){
+    return ("Error");
+  }
+
+  String response = client.getString();
+  client.end(); // Elimino los recursos utilizados
+  return (response);
+}
+
 
 void setup() {
   Serial.begin(115200);
@@ -22,19 +36,8 @@ void setup() {
   // Defino la url a la que apunta
   // En este caso hago que apunte al endpoint para obtener 
   // el id del generador
-  http.begin(GetIdUrl); 
-
-  int responseCode = http.GET(); // Hago un get y obtengo el codigo de respuesta
-
-  if (responseCode > 0){
-    String response = http.getString(); // Obtengo la respuesta
-    Serial.println("Id del generador :");
-    Serial.println(response);
-  }else {
-    Serial.println("Error en la request");
-    Serial.println(http.errorToString(responseCode)); // Transformo el codigo de error a string
-  }
-  http.end(); // Libera los recursos
+  String response = requestGet(http, GetIdUrl);
+  Serial.println(response);
 }
 
 void loop() {
