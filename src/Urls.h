@@ -1,1 +1,0 @@
-#define GetIdUrl "https://localhost:8000/generador/"
