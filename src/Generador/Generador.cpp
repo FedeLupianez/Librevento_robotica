@@ -21,7 +21,7 @@ void setup_macaddress(HTTPClient &client) {
   if (httpCode != HTTP_CODE_OK) {
     Serial.println("Error al configurar la mac");
     String payload = client.getString();
-    StaticJsonDocument<1024> doc;
+    JsonDocument doc;
     DeserializationError error = deserializeJson(doc, payload);
     Serial.println(error.c_str());
     return;

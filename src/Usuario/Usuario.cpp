@@ -13,7 +13,7 @@ int get_user_id(HTTPClient &client, const char *user_email) {
   }
 
   String payload = client.getString();
-  StaticJsonDocument<1024> doc;
+  JsonDocument doc;
   DeserializationError error = deserializeJson(doc, payload);
 
   if (error) {
