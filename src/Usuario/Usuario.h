@@ -1,7 +1,8 @@
 #include "HTTPClient.h"
+#include <WiFiClientSecure.h>
 #define Usuario_h
 #ifdef Usuario_h
 
-int get_user_id(HTTPClient &client, const char *user_email);
+String get_user_id(HTTPClient& client, WiFiClientSecure& wifi_client, const char* user_email);
 
 #endif

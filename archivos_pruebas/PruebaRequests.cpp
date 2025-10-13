@@ -73,7 +73,7 @@ void loop() {
       esp_http_client_config_t config = {
         .url = postUrl,
         .event_handler = event_handler,
-        //.cert_pem = NULL, // Esto hace que se saltee la certificación SSL, solo para testear en caso de ser necesario
+        .cert_pem = NULL, // Esto hace que se saltee la certificación SSL, solo para testear en caso de ser necesario
       };
       // Creo un cliente http 
       esp_http_client_handle_t client = esp_http_client_init(&config); // Esta función es la que crea un client
