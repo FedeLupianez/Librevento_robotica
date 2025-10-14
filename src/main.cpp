@@ -1,27 +1,41 @@
 
 #include "Generador/Generador.h"
 #include "HTTPClient.h"
-#include "NTPClient.h"
+#include "HardwareSerial.h"
 #include "WiFi.h"
 #include "WiFiType.h"
-#include "WiFiUdp.h"
 #include "esp32-hal.h"
 #include <Adafruit_INA219.h>
 #include <Arduino.h>
 #include <WiFiClientSecure.h>
 
+// Variables para el wifi y en envio de datos
 const char* user_email = "fedeAdmin@gmail.com";
-const char* password = "federico";
-const char* ssid = "Lupianez";
+const char* password = "";
+const char* ssid = "Lupianez-ext";
+
+// Estados
+enum States {
+    normal,
+    reading,
+    sending
+};
+States actual_state = normal;
+// Configuraciones del tiempo
+unsigned long last_reading = millis();
+unsigned long last_send = millis();
+const int reading_delay = 10000;
+const int send_delay = 60000;
+float accumulate_voltage = 0;
+
+HTTPClient http;
+WiFiClientSecure wifi_client;
 
 Adafruit_INA219 ina219;
 
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org", -10800, 60000);
-
 void connect_wifi()
 {
-    WiFi.begin(ssid);
+    WiFi.begin(ssid, password);
     unsigned long start = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - start < 60000) {
         Serial.print(".");
@@ -35,20 +49,22 @@ void connect_wifi()
     }
 }
 
-HTTPClient http;
-WiFiClientSecure wifi_client;
 void setup()
 {
     Serial.begin(115200);
+    WiFi.disconnect(true);
+    delay(1000);
+    WiFi.mode(WIFI_STA);
     delay(500);
     connect_wifi();
-    // timeClient.begin();
-    // if (!ina219.begin()) {
-    //     Serial.println("Error al iniciar INA219");
-    //     while (true) {
-    //         delay(10);
-    //     }
-    // }
+    Serial.print("Buscando INA219...");
+    while (true) {
+        if (ina219.begin())
+            break;
+        Serial.print(".");
+        delay(10);
+    }
+    Serial.println("INA219 encontrado");
     if (WiFi.status() == WL_CONNECTED) {
         setup_macaddress(http, wifi_client, user_email);
         Serial.println("setup terminado");
@@ -57,37 +73,44 @@ void setup()
     }
 }
 
-enum States {
-    normal,
-    reading,
-};
-
-States actual_state = normal;
-int last_minute = -1;
+float get_avg_voltage()
+{
+    return accumulate_voltage / 50;
+}
 
 States get_new_state(States previus_state)
 {
-    // float current_minute = timeClient.getMinutes();
-    // if (current_minute == 0
-    //     && current_minute != last_minute) {
-    //
-    //     last_minute = current_minute;
-    //     return States::reading;
-    // }
+    Serial.println("[ GET_NEW_STATE ] " + String(previus_state));
+    if (millis() - last_reading >= reading_delay) {
+        last_reading = millis();
+        float avg_voltage = get_avg_voltage();
+        Serial.println("[ SENDING ] AVG voltage : " + String(avg_voltage));
+        return States::reading;
+    }
 
-    // last_minute = current_minute;
+    if (millis() - last_send >= send_delay) {
+        last_send = millis();
+        return States::reading;
+    }
     return States::normal;
 }
 
 void loop()
 {
-    // timeClient.update();
-    // actual_state = get_new_state(actual_state);
-    // if (actual_state != States::normal) {
-    //     if (actual_state == States::reading) {
-    //         // Tomar la medición cada hora
-    //         float voltaje = ina219.getBusVoltage_V();
-    //         Serial.println("Voltaje: " + String(voltaje));
-    //     }
-    // }
+    for (int i = 0; i < 50; i++) {
+        Serial.println();
+    }
+    actual_state = get_new_state(actual_state);
+    Serial.println("[ LOOP ] Actual state -> " + String(actual_state));
+    if (actual_state != States::normal) {
+        if (actual_state == States::reading) {
+            // Tomar la medición cada hora
+            Serial.println("[ LOOP ] Leyendo voltaje");
+            float voltage = ina219.getBusVoltage_V();
+            accumulate_voltage += voltage;
+            Serial.println("[ LOOP ] Voltage -> " + String(voltage));
+            actual_state = States::normal;
+        }
+    }
+    delay(1000);
 }
