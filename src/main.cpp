@@ -11,8 +11,8 @@
 
 // Variables para el wifi y en envio de datos
 const char* user_email = "fedeAdmin@gmail.com";
-const char* password = "";
-const char* ssid = "Lupianez-ext";
+const char* password = "Fallaalumno";
+const char* ssid = "Manuel de Falla";
 
 // Estados
 enum States {
@@ -28,8 +28,8 @@ const int reading_delay = 10000;
 const int send_delay = 60000;
 float accumulate_voltage = 0;
 
-HTTPClient http;
-WiFiClientSecure wifi_client;
+HTTPClient *http = new HTTPClient();
+WiFiClientSecure *wifi_client = new WiFiClientSecure();
 
 Adafruit_INA219 ina219;
 
@@ -51,6 +51,7 @@ void connect_wifi()
 
 void setup()
 {
+    wifi_client->setInsecure();
     Serial.begin(115200);
     WiFi.disconnect(true);
     delay(1000);
@@ -65,12 +66,22 @@ void setup()
         delay(10);
     }
     Serial.println("INA219 encontrado");
+    Serial.println("Configurando hora...");
+     configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+    time_t now = time(nullptr);
+    while (now < 8 * 3600 * 2) {
+        delay(500);
+        now = time(nullptr);
+    }
+    Serial.println("Hora configurada");
     if (WiFi.status() == WL_CONNECTED) {
-        setup_macaddress(http, wifi_client, user_email);
+        setup_macaddress(*http, *wifi_client, user_email);
         Serial.println("setup terminado");
     } else {
         Serial.println("No se completó el setup");
     }
+
+   
 }
 
 float get_avg_voltage()
@@ -109,6 +120,12 @@ void loop()
             float voltage = ina219.getBusVoltage_V();
             accumulate_voltage += voltage;
             Serial.println("[ LOOP ] Voltage -> " + String(voltage));
+            actual_state = States::normal;
+        }
+
+        if (actual_state == States::sending) {
+            Serial.println("[ LOOP ] Enviando medición");
+            upload_medition(*http, *wifi_client, get_avg_voltage());
             actual_state = States::normal;
         }
     }
